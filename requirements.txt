@@ -1,0 +1,6 @@
+numpy
+scipy
+pybedtools
+matplotlib
+bokeh
+cython
