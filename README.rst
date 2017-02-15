@@ -63,7 +63,7 @@ mutations in chromosome 21 for melanoma
 
 The output will be shown in the following files::
 
-    examples/test_short.bed
+	examples/test_short.bed
 	examples/test_long.bed
 	examples/test.png
 

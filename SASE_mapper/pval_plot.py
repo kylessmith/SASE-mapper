@@ -53,6 +53,9 @@ def plot(out_long_fn, genome, prefix, plot_type="matplotlib"):
 
 
 def bokeh_plot(plot_array_x, plot_array_y, rect_x, rect_w, total_chroms, prefix, text_x):
+    '''
+    Create peaks plot in bokeh
+    '''
     
     from bokeh.plotting import figure, output_file, show
     from bokeh.models import FixedTicker
@@ -79,6 +82,9 @@ def bokeh_plot(plot_array_x, plot_array_y, rect_x, rect_w, total_chroms, prefix,
     
     
 def matplotlib_plot(plot_array_x, plot_array_y, continuous_chrom_pos, rect_w, total_chroms, prefix, text_x, genome):
+    '''
+    Create peaks plot in matplotlib
+    '''
     
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches

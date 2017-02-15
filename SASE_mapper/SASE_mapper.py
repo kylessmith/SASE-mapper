@@ -13,6 +13,15 @@ from pybedtools import BedTool
 
 
 def combine_overlap_pvalues(overlap, tau, sample_muts, sample_pvals, n_samples):
+    '''
+    requires
+        overlap: interval
+        tau: float for tpm
+        sample_muts: dictionary of samples -> arrays of mutation positions
+        sample_pvals: dictionary of samples -> arrays of p-values
+        n_samples: number of samples
+    returns: tuple(array of start positions, array of end positions, array of p-values)
+    '''
     
     chrom_start = overlap[1]
     region_length = overlap[2]
@@ -22,6 +31,18 @@ def combine_overlap_pvalues(overlap, tau, sample_muts, sample_pvals, n_samples):
 
 
 def write_long(tau, sample_muts, sample_pvals, n_samples, out_long, p, overlap_generator, chrom):
+    '''
+    requires
+        tau: float for tpm
+        sample_muts: dictionary of samples -> arrays of mutation positions
+        sample_pvals: dictionary of samples -> arrays of p-values
+        n_samples: number of samples
+        out_long: file name for output file
+        p: pool of processors
+        overlap_generator: generator for overlaps (intervals)
+        chrom: chromosome name
+    writes results to file (out_long)
+    '''
     
     g = functools.partial(combine_overlap_pvalues, tau=tau, sample_muts=sample_muts, sample_pvals=sample_pvals, n_samples=n_samples)
     overlap_pvals = p.map(g, overlap_generator)
@@ -34,6 +55,12 @@ def write_long(tau, sample_muts, sample_pvals, n_samples, out_long, p, overlap_g
                 
 
 def read_genome(genome_fn):
+    '''
+    requires
+        genome_fn: genome file name
+    returns
+        genome: OrderedDict of chromosome names -> chromosome length
+    '''
     
     genome = OrderedDict()
     
@@ -46,6 +73,13 @@ def read_genome(genome_fn):
 
 def run_SASE_mapper(muts_fn, evrs_fn, genome_fn, cpu, tau, prefix, gap_bp,
                     min_pval, min_samples, max_intermut_pval, pth, local, global_sfc):
+    '''
+    See main() for variable descriptions
+    
+    Outputs 3 files
+        2 text files in BED format
+        1 figure in user defined format (e.g. pdf, png, etc.)
+    '''
     
     out_short_fn = prefix+'_short.bed'
     out_long_fn = prefix+'_long.bed'
@@ -62,18 +96,18 @@ def run_SASE_mapper(muts_fn, evrs_fn, genome_fn, cpu, tau, prefix, gap_bp,
     # think about while loop so you can delete as you go
     
     for chrom, n_samples, pvalue_bedtools, sample_pos, sample_pvals in pvalue_bedtools_generator:
-        print chrom
-        print "found", n_samples, "samples"
+        print "\t", chrom
+        print "\t found", n_samples, "samples"
         if n_samples == 0:
             continue
-        print "finding overlaps"
+        print "\t\tfinding overlaps"
         overlap_generator = identify_overlaps(pvalue_bedtools, min_samples, gap_bp)
-        print "combining pvalues"
+        print "\t\tcombining pvalues"
         write_long(tau, sample_pos, sample_pvals, n_samples, temp_file, p, overlap_generator, chrom)
-        print "done combining pvalues"
+        print "\t\tdone combining pvalues"
     
     temp_file.flush()
-    print "writing long file"
+    print "\nwriting long file"
     BedTool(temp_file.name).sort().saveas(out_long_fn)
     temp_file.close()
     

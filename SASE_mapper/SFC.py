@@ -6,6 +6,13 @@ import sys
 
 
 def generate_summary(short_temp, muts_fn, min_samples):
+    '''
+    requires
+        short_temp: BedTool object
+        muts_fn: mutation file name
+        min_samples: minimum number of samples overlapping a region
+    yields: tab delimited string of results
+    '''
     
     fmt = "{chrom}\t{start}\t{end}\t{n_samples}\t{n_muts}\t{SFC}\n"
     muts_per_region = BedTool(muts_fn).intersect(short_temp, stream=True, wo=True)
@@ -42,6 +49,14 @@ def generate_summary(short_temp, muts_fn, min_samples):
         yield fmt.format(**locals())
 
 def generate_short(chroms, starts, ends, sig_regions):
+    '''
+    requires
+        chroms: array of chromosome names
+        starts: array of start positions
+        ends: array of end positions
+        sig_regions: array of SFC scores
+    yields: tab delimited string of results
+    '''
     
     fmt = "{chrom}\t{start}\t{end}\t{SFC}\n"
     
@@ -57,8 +72,13 @@ def generate_short(chroms, starts, ends, sig_regions):
 
 def efc(n, X, expected, pth=1e-6):
     '''
-    n: numpy array of lengths
-    X: numpy array of signals
+    requires
+        n: numpy array of lengths
+        X: numpy array of signals
+        expected: expected value
+        pth: p-value to set intervals
+    returns
+        sig_regions: array of SFC scores
     '''
     ## Determine the upper and lower bounds
     ## using equation for Z in paper but solve
@@ -93,8 +113,13 @@ def efc(n, X, expected, pth=1e-6):
 
 def local_efc(n, X, expected, pth=1e-6):
     '''
-    n: numpy array of lengths
-    X: numpy array of signals
+    requires
+        n: numpy array of lengths
+        X: numpy array of signals
+        expected: array of expected values
+        pth: p-value to set intervals
+    returns
+        sig_regions: array of SFC scores
     '''
     ## Determine the upper and lower bounds
     ## using equation for Z in paper but solve
@@ -117,14 +142,7 @@ def local_efc(n, X, expected, pth=1e-6):
     low_mean = n*low_limit
 
     depleted = n*expected>up_mean
-    enriched = n*expected<low_mean
-    #enriched = np.logical_and(n*expected<low_mean, np.isnan(b))
-    
-    
-    print b[np.isnan(b)]
-    print X[np.isnan(b)]
-    print low_mean[np.isnan(b)]
-    
+    enriched = n*expected<low_mean    
 
     sig_regions = np.zeros(len(X))
 
@@ -135,6 +153,16 @@ def local_efc(n, X, expected, pth=1e-6):
 
 
 def parse_long(long_fn, pth):
+    '''
+    requires
+        long_fn: long output file name
+        pth: p-value to set SFC intervals
+    returns
+        array of chromosome names
+        array of starting positions
+        array of end positions
+        array of pvalues
+    '''
     
     chroms = []
     starts = []
@@ -157,14 +185,24 @@ def parse_long(long_fn, pth):
 
 
 def find_peaks(long_fn, pth, short_fn, genome, muts_fn, min_samples, b, seg_local, segs_fn, global_sfc):
+    '''
+    requires
+        long_fn: long output file name
+        pth: p-value to set SFC intervals
+        short_fn: short output file name
+        genome: dictionary of chromosome names -> chromosome length
+        muts_fn: mutations file name
+        min_samples: minimum number of samples to overlap a region
+        b: distance to merge intervals
+        seg_local: boolean to conduct local analysis
+        segs_fn: evr file name
+        global_sfc: boolean to conduct global SFC analysis
+    writes results to file
+    '''
     chroms, starts, ends, pvalues = parse_long(long_fn, pth)
     
     lengths = ends - starts
-    #total_length = float(sum(genome.values()))
     coverage = lengths.sum()
-    #expected = np.sum(pvalues * lengths) / total_length
-    #expected = np.sum(pvalues) / total_length
-    #expected = np.sum(pvalues/lengths)/total_length
     
     sig_regions = np.zeros(len(starts))
     if seg_local:
@@ -174,7 +212,7 @@ def find_peaks(long_fn, pth, short_fn, genome, muts_fn, min_samples, b, seg_loca
         expected = np.sum(pvalues) / float(np.sum(genome.values()))
         
     for chrom in np.unique(chroms):
-        print chrom
+        print "\t", chrom
         if seg_local:
             while True:
                 expected = expected_gen.next()
@@ -182,15 +220,12 @@ def find_peaks(long_fn, pth, short_fn, genome, muts_fn, min_samples, b, seg_loca
                     break
         elif not global_sfc:
             expected = np.sum(pvalues[chroms==chrom]) / genome[chrom]
-        
-        print chrom, "expected:", expected
- 
+         
         if seg_local:
             sig_regions[chroms==chrom] = local_efc(lengths[chroms==chrom], pvalues[chroms==chrom], expected, pth)
         else:
             sig_regions[chroms==chrom] = efc(lengths[chroms==chrom], pvalues[chroms==chrom]/lengths[chroms==chrom], expected, pth)
         
-    #print np.sum(sig_regions > 0)
     short_temp = BedTool(generate_short(chroms, starts, ends, sig_regions)).merge(d=b, c=4, o="mean")
     del lengths
     del chroms

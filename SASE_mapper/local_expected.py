@@ -5,12 +5,23 @@ import time
 
 
 def calc_expected(evr_lengths, evr_sums, long_overlap):
+    '''
+    Given the EVR proportions, calculate expected number of
+    mutations in potential SASE
+    
+    requires
+        evr_lengths: dictionary od EVR labels -> total length of EVR
+        evr_sums: dictionary of EVR labels -> sum of p-values occurring in EVR
+        long_overlap: list of dictionaries for number of basepairs overlapping EVR
+    return
+        local_expected: array of expected values
+    '''
     
     evr_expected = {}    
     for label in evr_sums:
         evr_expected[label] = evr_sums[label] / float(evr_lengths[label])
     
-    print evr_expected
+    #print evr_expected
     
     local_expected = np.zeros(len(long_overlap), dtype=float)
     for i in xrange(len(long_overlap)):
@@ -25,6 +36,11 @@ def calc_expected(evr_lengths, evr_sums, long_overlap):
 
 
 def generate_long(long_fn):
+    '''
+    requires
+        long_fn: long output file name (contains potential SASEs)
+    yields: tuple(chrom name, start, end, signal)
+    '''
     
     for line in open(long_fn, "r"):
         fields = line.strip().split("\t")
@@ -40,6 +56,15 @@ def generate_long(long_fn):
 
 
 def calculate_local_expected(long_fn, EVR_fn):
+    '''
+    Calculated the expected p-value to observe in potential SASEs
+    
+    requires
+        long_fn: long output file name (contains potential SASEs)
+        EVR_fn: evr file name
+    yields
+        local_expected: array of expected values
+    '''
     
     long_generator = generate_long(long_fn)
     long_chrom, long_start, long_end, long_pvalue = long_generator.next()
@@ -75,12 +100,10 @@ def calculate_local_expected(long_fn, EVR_fn):
                 except StopIteration:
                     break
                                         
-        else:
-            #print "calculating local expected for:", previous_chrom
-            
+        else:            
             local_expected = calc_expected(evr_lengths, evr_sums, long_overlap)
                         
-            print previous_chrom, local_expected
+            #print previous_chrom, local_expected
             yield local_expected
             
             long_overlap = [defaultdict(int)]
@@ -104,8 +127,7 @@ def calculate_local_expected(long_fn, EVR_fn):
                     
         previous_chrom = chrom
     
-    #print "calculating local expected for:", chrom   
-    print previous_chrom, local_expected 
+    #print previous_chrom, local_expected 
     local_expected = calc_expected(evr_lengths, evr_sums, long_overlap)
     yield local_expected
         
